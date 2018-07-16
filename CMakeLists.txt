@@ -74,6 +74,13 @@ SET(${TALOS_LIBRARY_NAME}_HEADERS
         include/sot/torque_control/talos-common.hh
   )
 
+IF (${DDP_ACTUATOR_SOLVER_FOUND})
+  SET(${TALOS_LIBRARY_NAME}_HEADERS
+    ${${TALOS_LIBRARY_NAME}_HEADERS}
+    include/sot/torque_control/temperature-controller.hh
+    )
+ENDIF()
+
 #INSTALL(FILES ${${TALOS_LIBRARY_NAME}_HEADERS}
 #  DESTINATION include/sot/torque-control
 #  PERMISSIONS OWNER_READ GROUP_READ WORLD_READ OWNER_WRITE)
