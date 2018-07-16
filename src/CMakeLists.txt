@@ -1,5 +1,9 @@
 SET(plugins
-)
+  )
+
+IF (DDP_ACTUATOR_SOLVER_FOUND)
+  SET(plugins ${plugins} temperature-controller)
+ENDIF()
 
 
 #Plugins compilation, link, and installation
@@ -28,6 +32,9 @@ FOREACH(plugin ${plugins})
   PKG_CONFIG_USE_DEPENDENCY(${LIBRARY_NAME} sot-torque-control)
   TARGET_LINK_LIBRARIES(${LIBRARY_NAME} ${Boost_LIBRARIES})
 
+  IF (DDP_ACTUATOR_SOLVER_FOUND)
+    PKG_CONFIG_USE_DEPENDENCY(${LIBRARY_NAME} ddp-actuator-solver)
+  ENDIF()
   ADD_DEPENDENCIES(${LIBRARY_NAME} ${TALOS_LIBRARY_NAME})
 
   IF(ADDITIONAL_${LIBRARY_NAME}_LIBS)

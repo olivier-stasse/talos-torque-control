@@ -1,4 +1,4 @@
-# Copyright 2014, Andrea Del Prete, LAAS/CNRS
+ # Copyright 2014, Andrea Del Prete, LAAS/CNRS
 #
 # This file is part of sot-torque-control.
 # sot-torque-control is free software: you can redistribute it and/or
@@ -62,6 +62,8 @@ ADD_REQUIRED_DEPENDENCY("sot-core")
 ADD_REQUIRED_DEPENDENCY("pinocchio >= 1.2")
 ADD_REQUIRED_DEPENDENCY("tsid")
 ADD_REQUIRED_DEPENDENCY("sot-torque-control")
+
+ADD_OPTIONAL_DEPENDENCY("ddp-actuator-solver")
 
 include_directories(include)
 
