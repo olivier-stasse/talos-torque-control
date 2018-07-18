@@ -52,9 +52,9 @@ namespace dynamicgraph
                           m_fRightHandRefSIN << m_fLeftHandRefSIN
 #define FORCE_SIGNALS     m_fRightFootSIN << m_fLeftFootSIN << \
                           m_fRightHandSIN << m_fLeftHandSIN
-#define GAIN_SIGNALS      m_KdSIN << m_KfSIN
-#define STATE_SIGNALS     m_base6d_encodersSIN << m_jointsVelocitiesSIN
-
+			  #define GAIN_SIGNALS      m_KdSIN << m_KfSIN */
+#define STATE_SIGNALS     m_qSIN << m_qDotSIN << m_temp_motorSIN << m_tauSIN << m_temp_ambiantSIN
+/*
 #define INPUT_SIGNALS     STATE_SIGNALS << REF_FORCE_SIGNALS << \
                           FORCE_SIGNALS << GAIN_SIGNALS << m_controlledJointsSIN << m_dampingSIN
 
@@ -79,15 +79,11 @@ namespace dynamicgraph
             ,CONSTRUCT_SIGNAL_IN(temp_motor,    dynamicgraph::Vector)
             ,CONSTRUCT_SIGNAL_IN(tau,           dynamicgraph::Vector)
             ,CONSTRUCT_SIGNAL_IN(temp_ambiant,  dynamicgraph::Vector)
-            ,CONSTRUCT_SIGNAL_OUT(qDes,         dynamicgraph::Vector, STATE_SIGNALS<<
-                                                                FORCE_SIGNALS<<
-                                                                REF_FORCE_SIGNALS<<
-                                                                GAIN_SIGNALS<<
-                                                                m_controlledJointsSIN)
-            ,CONSTRUCT_SIGNAL_OUT(dqDes,            dynamicgraph::Vector, m_uDesSOUT)
+            ,CONSTRUCT_SIGNAL_OUT(qDes,         dynamicgraph::Vector, STATE_SIGNALS)
+            ,CONSTRUCT_SIGNAL_OUT(dqDes,        dynamicgraph::Vector, STATE_SIGNALS)
             ,m_initSucceeded(false)
       {
-        Entity::signalRegistration( INPUT_SIGNALS << OUTPUT_SIGNALS );
+        Entity::signalRegistration( STATE_SIGNALS );
 
         /* Commands. */
         /*addCommand("getUseJacobianTranspose",
@@ -98,7 +94,7 @@ namespace dynamicgraph
                                     docDirectSetter("If true it uses the Jacobian transpose, otherwise the pseudoinverse",
                                                     "bool")));*/
         addCommand("init",
-                   makeCommandVoid1(*this, &AdmittanceController::init,
+                   makeCommandVoid1(*this, &TemperatureController::init,
                                     docCommandVoid1("Initialize the entity.",
                                                     "Time period in seconds (double)")));
       }
@@ -107,23 +103,25 @@ namespace dynamicgraph
       {
         if(dt<=0.0)
           return SEND_MSG("Timestep must be positive", MSG_TYPE_ERROR);
-        if(!m_base6d_encodersSIN.isPlugged())
-          return SEND_MSG("Init failed: signal base6d_encoders is not plugged", MSG_TYPE_ERROR);
-        if(!m_jointsVelocitiesSIN.isPlugged())
-          return SEND_MSG("Init failed: signal jointsVelocities is not plugged", MSG_TYPE_ERROR);
-        if(!m_KdSIN.isPlugged())
-          return SEND_MSG("Init failed: signal Kd is not plugged", MSG_TYPE_ERROR);
-        if(!m_KfSIN.isPlugged())
-          return SEND_MSG("Init failed: signal Kf is not plugged", MSG_TYPE_ERROR);
-        if(!m_controlledJointsSIN.isPlugged())
-          return SEND_MSG("Init failed: signal controlledJoints is not plugged", MSG_TYPE_ERROR);
+        if(!m_qSIN.isPlugged())
+          return SEND_MSG("Init failed: signal q is not plugged", MSG_TYPE_ERROR);
+        if(!m_qDotSIN.isPlugged())
+          return SEND_MSG("Init failed: signal qDot is not plugged", MSG_TYPE_ERROR);
+        if(!m_temp_motorSIN.isPlugged())
+          return SEND_MSG("Init failed: signal temp_motor is not plugged", MSG_TYPE_ERROR);
+        if(!m_tauSIN.isPlugged())
+          return SEND_MSG("Init failed: signal tau is not plugged", MSG_TYPE_ERROR);
+        if(!m_temp_ambiantSIN.isPlugged())
+          return SEND_MSG("Init failed: signal temp_ambiant is not plugged", MSG_TYPE_ERROR);
 
         m_dt = dt;
+	
         m_qDes.setZero(N_JOINTS);
-        m_dqDes.setZero(N_JOINTS);
-        m_q.setZero();
-        m_dq.setZero();
-
+      /*
+        m_dqDesSOUT.setZero(N_JOINTS);
+        m_qSIN.setZero();
+        m_dqSIN.setZero();
+	*/
 
 
         m_initSucceeded = true;
@@ -143,7 +141,9 @@ namespace dynamicgraph
           return s;
         }
 
-        const Eigen::VectorXd& q =             m_base6d_encodersSIN(iter);
+        const Eigen::VectorXd& q =             m_qSIN(iter);
+	const Eigen::VectorXd& qDes  =         m_qDesSOUT(iter); // n
+
         if(m_firstIter)
         {
           // at the fist iteration store the joint positions as desired joint positions
@@ -152,20 +152,21 @@ namespace dynamicgraph
         }
 
         const Eigen::VectorXd& dqDes  =                m_dqDesSOUT(iter); // n
-        const Eigen::VectorXd& qMask =       m_controlledJointsSIN(iter); // n
+        // const Eigen::VectorXd& qMask =       m_controlledJointsSIN(iter); // n
 
         if(s.size()!=N_JOINTS)
           s.resize(N_JOINTS);
         for(int i=0; i<N_JOINTS; i++)
         {
           // if the joint is active integrate the desired velocity to get the new desired position
-          if(qMask[i]!=0.0)
-            m_qDes(i) += m_dt * dqDes(i);
+          //if(qMask[i]!=0.0)
+	  m_qDes(i) = m_dt * dqDes(i) + qDes(i);
           // if the joint is not active just check whether the desired joint position is too far
           // from the measured position, if this is the case it probably means that another
           // controller is moving that joint, so we update the desired joint position to the measured
           // position (@todo check this only when a joint switch from unactive to active)
-          else if(fabs(q(6+i)-m_qDes(i))>DEFAULT_MAX_DELTA_Q)
+	  //else
+          if(fabs(q(6+i)-qDes(i))>DEFAULT_MAX_DELTA_Q)
           {
             m_qDes(i) = q(6+i);
 //            SEND_MSG("Resetting qDes for joint "+JointUtil::get_name_from_id(i)+" because it was "+

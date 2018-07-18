@@ -52,7 +52,8 @@ namespace dynamicgraph {
     namespace torque_control {
 
       //Eigen::VectorXd svdSolveWithDamping(const Eigen::JacobiSVD<Eigen::MatrixXd>& A, const Eigen::VectorXd &b, double damping);
-
+#define OUTPUT_SIGNALS      m_uSOUT << m_dqDesSOUT 
+      
       /* --------------------------------------------------------------------- */
       /* --- CLASS ----------------------------------------------------------- */
       /* --------------------------------------------------------------------- */
@@ -77,7 +78,8 @@ namespace dynamicgraph {
         DECLARE_SIGNAL_IN(temp_motor,   dynamicgraph::Vector);
         DECLARE_SIGNAL_IN(tau,          dynamicgraph::Vector);
         DECLARE_SIGNAL_IN(temp_ambiant, dynamicgraph::Vector);
-
+        DECLARE_SIGNAL_OUT(qDes,        dynamicgraph::Vector);
+	DECLARE_SIGNAL_OUT(dqDes,       dynamicgraph::Vector);
         DECLARE_SIGNAL_OUT(u,           dynamicgraph::Vector);  /// integral of dqDes
         // DEBUG SIGNALS
         //DECLARE_SIGNAL_OUT(dqDes,             dynamicgraph::Vector);  /// dqDes = J^+ * Kf * (fRef-f)
@@ -97,7 +99,10 @@ namespace dynamicgraph {
 
       protected:
         Eigen::VectorXd   m_u;             /// desired joint positions
-
+	bool m_initSucceeded;
+	bool m_firstIter;
+	double m_dt;
+	Eigen::VectorXd m_qDes;
         /// robot geometric/inertial data
         //typedef Eigen::Matrix<double, 6*Hrp2_14::NBBODIES, Hrp2_14::NBDOF>  AllJacobian;
 
